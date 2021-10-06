@@ -1,6 +1,5 @@
 namespace DataAccess
 
-open System.IO
 open Npgsql.FSharp
 open UserTypes
 open backend.Models

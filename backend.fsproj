@@ -16,11 +16,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Models.fs" />
-    <Compile Include="UserTypes.fs" />
-    <Compile Include="DataAccess.fs" />
-    <Compile Include="HttpHandlers.fs" />
-    <Compile Include="JwtAuth.fs"/>
+    <Compile Include="Utils/SqlConnection.fs"/>
+    <Compile Include="Utils/PasswordHash.fs"/>
+    <Compile Include="Types/SimpleTypes.fs"/>
+    <Compile Include="Types/TableTypes.fs"/>
+    <Compile Include="Types/UserTypes.fs"/>
+    <Compile Include="Models/TableModel.fs"/>
+    <Compile Include="Models/UserModel.fs"/>
+    <Compile Include="Handlers/AuthHandlers/JWTHandlers.fs"/>
+    <Compile Include="Handlers/TableHandlers.fs"/>
+    <Compile Include="Handlers/UserHandlers.fs"/>
     <Compile Include="Program.fs" />
   </ItemGroup>
 

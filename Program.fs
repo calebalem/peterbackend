@@ -8,12 +8,13 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
-open backend.HttpHandlers
+open UserHandlers;
+open TableHandlers;
+open JWTHandlers;
 open System.Text
 open Microsoft.IdentityModel.Tokens
 open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.AspNetCore.Http
-open JwtAuth
 
 
 
@@ -27,14 +28,13 @@ let webApp =
     choose [ subRoute
                  "/api"
                  (choose [ POST
-                           >=> choose [ route "/token" >=> Auth.handlePostToken
-                                        route "/user/add"  >=> authorize >=> handleAddUser
-                                        route "/table/create">=> authorize >=>  handleAddTable
-                                        route "/table/addData">=> authorize>=> handleAddTableData ]
-                           GET
-                           >=> choose [
-                                        route "/user" >=> authorize >=> handleGetUser
-                                        route "/tables">=> authorize>=> handleGetTableNames ] ])
+                           >=> choose [ route "/token" >=> JWTHandlers.handlePostToken
+                                        route "/user/add"  >=> authorize >=> UserHandlers.handleAddUser
+                                        route "/table/create">=> authorize >=>  TableHandlers.handleAddTable
+                                        route "/table/addData">=> authorize>=> TableHandlers.handleAddTableData
+                                        route "/user" >=> authorize >=> UserHandlers.handleGetUser
+                                        route "/tables">=> authorize>=> TableHandlers.handleGetTableNames 
+                                      ]])
              setStatusCode 404 >=> text "Not Found" ]
 
 // ---------------------------------
@@ -84,7 +84,7 @@ let configureServices (services: IServiceCollection) =
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = "http://localhost:5001",
                     ValidAudience = "http://localhost:5000",
-                    IssuerSigningKey = SymmetricSecurityKey(Encoding.UTF8.GetBytes(Auth.secret))
+                    IssuerSigningKey = SymmetricSecurityKey(Encoding.UTF8.GetBytes(JWTHandlers.secret))
                 ))|> ignore
 
     services.AddCors() |> ignore
