@@ -33,7 +33,8 @@ let webApp =
                                         route "/table/create">=> authorize >=>  TableHandlers.handleAddTable
                                         route "/table/addData">=> authorize>=> TableHandlers.handleAddTableData
                                         route "/user" >=> authorize >=> UserHandlers.handleGetUser
-                                        route "/tables">=> authorize>=> TableHandlers.handleGetTableNames 
+                                        route "/tables">=> authorize>=> TableHandlers.handleGetTableNames
+                                        route "/table/getData" >=> authorize >=> TableHandlers.handleGetTableData
                                       ]])
              setStatusCode 404 >=> text "Not Found" ]
 

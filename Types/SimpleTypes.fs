@@ -25,3 +25,10 @@ type TokenResult =
         email : string
         userName : string
     }
+
+[<CLIMutable>]
+type getTableData = 
+    {
+        id: int 
+        tableName : string
+    }

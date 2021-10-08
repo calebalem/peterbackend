@@ -35,3 +35,10 @@ module TableHandlers =
 
             return! json tableNames next ctx
         }
+
+    let handleGetTableData (next : HttpFunc) (ctx: HttpContext) =
+        task {
+            let! user = ctx.BindJsonAsync<SimpleTypes.getTableData>()
+            let tableData = TableModel.getTableData user
+            return! json tableData next ctx 
+        }
