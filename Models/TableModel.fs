@@ -6,29 +6,31 @@ module TableModel =
     open UserTypes
     open SimpleTypes
     open SqlConnection
-
-    let private listToStringArray (list :list<string>) = 
-        let stringArray = [|for i in list -> i|]
-        stringArray
+    open Npgsql
 
     let private dynamiclyCreateTableQuery (table: Table) =
         let queryStart =
             sprintf
-                "CREATE TABLE %s ( row_id serial PRIMARY KEY"
+                "CREATE TABLE %s ("
                 (table.tableName + table.userId.ToString())
 
         let mutable dynamicQuery = ""
 
         for i in 0 .. table.tableHeaders.Length - 1 do
-            dynamicQuery <-
+            if i = table.tableHeaders.Length - 1 then
+                dynamicQuery <-
+                    dynamicQuery
+                    + sprintf "%s  %s" (table.tableHeaders.Item(i)) (table.tableDataTypes.Item(i))
+            else
+                dynamicQuery <-
                 dynamicQuery
-                + sprintf ",%s  %s" (table.tableHeaders.Item(i)) (table.tableDataTypes.Item(i))
+                + sprintf "%s  %s," (table.tableHeaders.Item(i)) (table.tableDataTypes.Item(i))
 
         let queryEnd = ");"
         let finalQuery = queryStart + dynamicQuery + queryEnd
         finalQuery
 
-    let private dynamiclyInsertTableDataQuery (tableData: TableData) =
+    let private dynamiclyInsertTableDataQuery (tableData: Table) =
         let insertQuery =
             sprintf "INSERT INTO %s (" (tableData.tableName + tableData.userId.ToString())
 
@@ -54,11 +56,11 @@ module TableModel =
                 if j = tableData.tableDatas.Item(i).Length - 1 then
                     valuesQuery <-
                         valuesQuery
-                        + sprintf "%s)" (tableData.tableDatas.Item(i).Item(j).ToString())
+                        + sprintf "%s)" (if tableData.tableDataTypes.Item(j) = "character varying(255)" then "'"+tableData.tableDatas.Item(i).Item(j).ToString()+"'" else tableData.tableDatas.Item(i).Item(j).ToString())
                 else
                     valuesQuery <-
                         valuesQuery
-                        + sprintf "%s, " (tableData.tableDatas.Item(i).Item(j).ToString())
+                        + sprintf "%s, " (if tableData.tableDataTypes.Item(j) = "character varying(255)" then "'"+tableData.tableDatas.Item(i).Item(j).ToString()+"'" else tableData.tableDatas.Item(i).Item(j).ToString())
 
             if i = tableData.tableDatas.Length - 1 then
                 valuesQuery <- valuesQuery + ";"
@@ -72,7 +74,7 @@ module TableModel =
     let addTable (table: Table) =
         let query = dynamiclyCreateTableQuery table
         printfn "%s" query
-
+       
         SqlConnection.connectionString
         |> Sql.connect
         |> Sql.query query
@@ -80,14 +82,32 @@ module TableModel =
 
         SqlConnection.connectionString
         |> Sql.connect
-        |> Sql.query "INSERT INTO user_table_map(user_id, table_name, tableHeaders) VALUES (@user_id,@table_name,@table_headers)"
+        |> Sql.query "INSERT INTO user_table_map(user_id, table_name) VALUES (@user_id,@table_name)"
         |> Sql.parameters [ "user_id", Sql.int table.userId;
-                            "table_name", Sql.string table.tableName;
-                            "table_headers", Sql.stringArray (listToStringArray(table.tableHeaders)) ]
+                            "table_name", Sql.string table.tableName;]
         |> Sql.executeNonQuery
 
-    let addTableData (tableData: TableData) =
-        let query = dynamiclyInsertTableDataQuery tableData
+    let deleteTable (table : Table) = 
+        let queryDeleteTable = sprintf "DROP TABLE %s;" (table.tableName + table.userId.ToString())
+        use connection = new NpgsqlConnection(SqlConnection.connectionString)
+        connection.Open()
+        let cmd = NpgsqlCommand(queryDeleteTable,connection)
+        let deleteTableResponse = cmd.ExecuteNonQuery()
+        let queryDeleteUserTableMapEntry = sprintf "DELETE FROM user_table_map WHERE user_id = %i AND LOWER(table_name) = LOWER('%s')" table.userId table.tableName
+        let cmd = NpgsqlCommand(queryDeleteUserTableMapEntry,connection)
+        let deleteMapEntryResponse = cmd.ExecuteNonQuery()
+        connection.Close()
+        deleteMapEntryResponse
+
+    let addTableData (table: Table) =
+         //Drop table
+        deleteTable table
+
+        //Create table
+        addTable table
+
+        //insertData
+        let query = dynamiclyInsertTableDataQuery table
         printfn "%s" query
 
         SqlConnection.connectionString
@@ -113,21 +133,34 @@ module TableModel =
 
     let getTableData (tableInfo : getTableData)=
         let query = 
-            sprintf "SELECT * from %s AS table_data" (tableInfo.tableName + tableInfo.id.ToString())
-        let tableData = ResizeArray<string>()
+            sprintf "SELECT * from %s" (tableInfo.tableName + tableInfo.id.ToString())
+        let tableData = ResizeArray<obj>()
+        let columnNames = ResizeArray<obj>()
+        let columnTypes = ResizeArray<obj>()
+        use connection = new NpgsqlConnection(SqlConnection.connectionString)
+        connection.Open()
+        let cmd = NpgsqlCommand(query,connection)
+        let reader = cmd.ExecuteReader()
+        
+        for i in 0 .. reader.FieldCount - 1 do
+            columnTypes.Add(reader.GetDataTypeName(i))
+            columnNames.Add(reader.GetName(i))
 
-        SqlConnection.connectionString
-        |>Sql.connect
-        |> Sql.query query
-        |>Sql.executeRow(fun read -> tableData.Add(read.text "table_data"))
-        tableData
+        while reader.Read() do
+            let tableRow = ResizeArray<obj>()
+            for i in 0 .. reader.FieldCount - 1 do
+                tableRow.Add(reader.GetValue(i))
+            tableData.Add(tableRow)
 
-    let getTableHeaders (tableInfo : getTableData)=
-        let tableHeaders = ResizeArray<string[]>()
-        SqlConnection.connectionString
-        |>Sql.connect
-        |>Sql.query "SELECT table_headers FROM user_table_map WHERE table_name = @TABLE_NAME AND user_id = @USER_ID"
-        |>Sql.parameters["TABLE_NAME",Sql.text tableInfo.tableName ;"USER_ID", Sql.int tableInfo.id]
-        |>Sql.execute(fun read -> tableHeaders.Add(read.stringArray "tableHeaders"))
+        reader.Close()
+        connection.Close()
+        let response = 
+            Map.empty.
+                Add("tableData",tableData).
+                Add("columnNames",columnNames).
+                Add("columnTypes",columnTypes)
+        response 
+
+   
     
    

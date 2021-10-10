@@ -20,7 +20,7 @@ module TableHandlers =
 
     let handleAddTableData (next: HttpFunc) (ctx: HttpContext) =
         task {
-            let! tableData = ctx.BindJsonAsync<TableData>()
+            let! tableData = ctx.BindJsonAsync<Table>()
             TableModel.addTableData tableData
             // let loggerB = ctx.GetLogger()
             // let string = sprintf "Caleb: %A" data.tableHeader
