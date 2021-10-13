@@ -82,7 +82,7 @@ let configureServices (services: IServiceCollection) =
                 TokenValidationParameters(
                     ValidateActor = true,
                     ValidateAudience = true,
-                    ValidateLifetime = true,
+                    ValidateLifetime = false,
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = "http://localhost:5001",
                     ValidAudience = "http://localhost:5000",

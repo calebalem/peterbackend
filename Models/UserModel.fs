@@ -9,15 +9,6 @@ module UserModel =
     open SqlConnection
 
 
-    let private connectionString: string =
-        Sql.host "localhost"
-        |> Sql.database "backend"
-        |> Sql.username "postgres"
-        |> Sql.password "nayla"
-        |> Sql.formatConnectionString
-
-   
-
     let addUser (user: User) =
         let logQuery = "SELECT * FROM user_table WHERE user_email = @USEREMAIL"
         use connection = new NpgsqlConnection(SqlConnection.connectionString)
@@ -28,7 +19,7 @@ module UserModel =
         printf "user login %b" result.HasRows
         if not result.HasRows then
             connection.Close()
-            connectionString
+            SqlConnection.connectionString
             |> Sql.connect
             |> Sql.query
                 "INSERT INTO user_table (user_name,user_email,user_password) VALUES(@user_name, @user_email, @user_password);"
@@ -44,7 +35,7 @@ module UserModel =
         let passwordHash = PasswordHash.getPasswordHash loginModel.password
         let user = User()
 
-        connectionString
+        SqlConnection.connectionString
         |> Sql.connect
         |> Sql.query "SELECT * FROM user_table WHERE user_email=@USER_EMAIL AND user_password=@USER_PASSWORD"
         |> Sql.parameters [ "USER_EMAIL", Sql.text loginModel.email
@@ -58,7 +49,7 @@ module UserModel =
     let getUser (loginModel: LoginModel) : UserModel list =
         let passwordHash = PasswordHash.getPasswordHash loginModel.password
 
-        connectionString
+        SqlConnection.connectionString
         |> Sql.connect
         |> Sql.query "SELECT * FROM user_table WHERE user_email=@USER_EMAIL AND user_password=@USER_PASSWORD"
         |> Sql.parameters [ "USER_EMAIL", Sql.text loginModel.email
