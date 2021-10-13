@@ -29,12 +29,13 @@ let webApp =
                  "/api"
                  (choose [ POST
                            >=> choose [ route "/token" >=> JWTHandlers.handlePostToken
-                                        route "/user/add"  >=> authorize >=> UserHandlers.handleAddUser
-                                        route "/table/create">=> authorize >=>  TableHandlers.handleAddTable
-                                        route "/table/addData">=> authorize>=> TableHandlers.handleAddTableData
+                                        route "/user/add" >=> UserHandlers.handleAddUser
+                                        route "/table/create">=> authorize >=>  TableHandlers.handleAddTable 
+                                        route "/table/addData">=> authorize>=> TableHandlers.handleAddTableData 
                                         route "/user" >=> authorize >=> UserHandlers.handleGetUser
                                         route "/tables">=> authorize>=> TableHandlers.handleGetTableNames
                                         route "/table/getData" >=> authorize >=> TableHandlers.handleGetTableData
+                                        route "/table/getLog" >=> authorize >=> TableHandlers.handleGetLog
                                       ]])
              setStatusCode 404 >=> text "Not Found" ]
 

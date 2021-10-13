@@ -5,6 +5,8 @@ module UserModel =
     open UserTypes
     open SimpleTypes
     open PasswordHash
+    open Npgsql
+    open SqlConnection
 
 
     let private connectionString: string =
@@ -17,15 +19,27 @@ module UserModel =
    
 
     let addUser (user: User) =
-        connectionString
-        |> Sql.connect
-        |> Sql.query
-            "INSERT INTO user_table (user_name,user_email,user_password) VALUES(@user_name, @user_email, @user_password);"
-        |> Sql.parameters [ "user_name", Sql.text user.userName
-                            "user_email", Sql.text user.userEmail
-                            "user_password", Sql.text (PasswordHash.getPasswordHash user.userPassword) ]
-        |> Sql.executeNonQuery
-
+        let logQuery = "SELECT * FROM user_table WHERE user_email = @USEREMAIL"
+        use connection = new NpgsqlConnection(SqlConnection.connectionString)
+        connection.Open()
+        let cmd = NpgsqlCommand(logQuery,connection)
+        cmd.Parameters.AddWithValue("USEREMAIL",user.userEmail)
+        let result = cmd.ExecuteReader()
+        printf "user login %b" result.HasRows
+        if not result.HasRows then
+            connection.Close()
+            connectionString
+            |> Sql.connect
+            |> Sql.query
+                "INSERT INTO user_table (user_name,user_email,user_password) VALUES(@user_name, @user_email, @user_password);"
+            |> Sql.parameters [ "user_name", Sql.text user.userName
+                                "user_email", Sql.text user.userEmail
+                                "user_password", Sql.text (PasswordHash.getPasswordHash user.userPassword) ]
+            |> Sql.executeNonQuery
+        else
+            connection.Close()
+            0
+            
     let authUser (loginModel: LoginModel) =
         let passwordHash = PasswordHash.getPasswordHash loginModel.password
         let user = User()

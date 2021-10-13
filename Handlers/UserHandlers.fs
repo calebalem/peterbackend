@@ -11,8 +11,8 @@ module UserHandlers =
     let handleAddUser (next: HttpFunc) (ctx: HttpContext) = 
         task {
             let! user = ctx.BindJsonAsync<User>()
-            UserModel.addUser user
-            return! text(sprintf "Added %s to user_table." user.userEmail) next ctx
+            let response = UserModel.addUser user
+            return! json response next ctx
         }
     let handleGetUser (next: HttpFunc) (ctx: HttpContext) = 
         task {

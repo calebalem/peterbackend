@@ -42,3 +42,12 @@ module TableHandlers =
             let tableData = TableModel.getTableData user
             return! json tableData next ctx 
         }
+    let handleGetLog (next : HttpFunc) (ctx: HttpContext) =
+        task {
+            let! logInfo = ctx.BindJsonAsync<SimpleTypes.Log>()
+            let log = TableModel.getLog logInfo
+            printf "Json %A" (json log)
+            return! json log next ctx 
+        }
+    
+  

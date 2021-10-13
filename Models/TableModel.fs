@@ -1,6 +1,7 @@
 namespace TableModel
 
 module TableModel =
+    open System
     open Npgsql.FSharp
     open TableTypes
     open UserTypes
@@ -56,11 +57,11 @@ module TableModel =
                 if j = tableData.tableDatas.Item(i).Length - 1 then
                     valuesQuery <-
                         valuesQuery
-                        + sprintf "%s)" (if tableData.tableDataTypes.Item(j) = "character varying(255)" then "'"+tableData.tableDatas.Item(i).Item(j).ToString()+"'" else tableData.tableDatas.Item(i).Item(j).ToString())
+                        + sprintf "%s)" (if tableData.tableDataTypes.Item(j) = "text" then "'"+tableData.tableDatas.Item(i).Item(j).ToString()+"'" else tableData.tableDatas.Item(i).Item(j).ToString())
                 else
                     valuesQuery <-
                         valuesQuery
-                        + sprintf "%s, " (if tableData.tableDataTypes.Item(j) = "character varying(255)" then "'"+tableData.tableDatas.Item(i).Item(j).ToString()+"'" else tableData.tableDatas.Item(i).Item(j).ToString())
+                        + sprintf "%s, " (if tableData.tableDataTypes.Item(j) = "text" then "'"+tableData.tableDatas.Item(i).Item(j).ToString()+"'" else tableData.tableDatas.Item(i).Item(j).ToString())
 
             if i = tableData.tableDatas.Length - 1 then
                 valuesQuery <- valuesQuery + ";"
@@ -70,6 +71,38 @@ module TableModel =
         let finalQuery = insertQuery + columnsQuery + valuesQuery
         finalQuery
 
+    let updateLog(table : Table) = 
+        let logQuery = "INSERT INTO table_log (user_id,table_name,date,time) VALUES (@USERID,@TABLENAME,@DATE,@TIME)"
+        use connection = new NpgsqlConnection(SqlConnection.connectionString)
+        connection.Open()
+        let cmd = NpgsqlCommand(logQuery,connection)
+        cmd.Parameters.AddWithValue("USERID",table.userId)
+        cmd.Parameters.AddWithValue("TABLENAME",table.tableName)
+        cmd.Parameters.AddWithValue("DATE", DateTime.Now.ToShortDateString())
+        cmd.Parameters.AddWithValue("TIME", DateTime.Now.ToShortTimeString())
+        let result = cmd.ExecuteNonQuery()
+        connection.Close()
+        result
+
+    let getLog(logInfo: SimpleTypes.Log)=
+        let logQuery = "SELECT table_name,time from table_log WHERE user_id=@USERID AND date=@DATE"
+        use connection = new NpgsqlConnection(SqlConnection.connectionString)
+        connection.Open()
+        let cmd = NpgsqlCommand(logQuery,connection)
+        cmd.Parameters.AddWithValue("USERID",logInfo.userId)
+        cmd.Parameters.AddWithValue("DATE",logInfo.date)
+        let reader = cmd.ExecuteReader()
+        let log = ResizeArray<obj>()
+        while reader.Read() do
+            log.Add(reader.GetValue(0).ToString() + " At " + reader.GetValue(1).ToString())
+        reader.Close()
+        connection.Close()
+        let response = 
+            Map.empty.
+                Add("log",log.ToArray())
+
+        printf "the response is %A" response
+        response
 
     let addTable (table: Table) =
         let query = dynamiclyCreateTableQuery table
@@ -113,7 +146,11 @@ module TableModel =
         SqlConnection.connectionString
         |> Sql.connect
         |> Sql.query query
-        |> Sql.executeNonQuery
+        |> Sql.executeNonQuery |>ignore
+
+        //update the log
+        let response = updateLog table
+        response
 
 
 

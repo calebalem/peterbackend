@@ -32,3 +32,9 @@ type getTableData =
         id: int 
         tableName : string
     }
+
+type Log = 
+    {
+        userId: int
+        date: string
+    }
